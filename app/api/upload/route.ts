@@ -33,8 +33,15 @@ export async function POST(request: NextRequest) {
     // Crear sesión (no guardamos la imagen en el servidor por ahora)
     const session = createSession();
 
-    // Agregar items a la sesión
-    addItemsToSession(session.id, ocrResult.items);
+    // Agregar items a la sesión (esto asigna IDs únicos a cada item)
+    const updatedSession = addItemsToSession(session.id, ocrResult.items);
+    
+    if (!updatedSession) {
+      return NextResponse.json(
+        { error: 'Error al crear la sesión' },
+        { status: 500 }
+      );
+    }
 
     // Generar QR code
     const sessionURL = getSessionURL(session.id);
@@ -42,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       sessionId: session.id,
-      items: ocrResult.items,
+      items: updatedSession.items, // Usar items con IDs asignados
       qrCode: qrCodeDataURL,
       sessionURL,
     });

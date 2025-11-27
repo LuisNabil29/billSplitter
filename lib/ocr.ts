@@ -13,7 +13,7 @@ const getOpenAIClient = () => {
 };
 
 export interface OCRResult {
-  items: BillItem[];
+  items: Omit<BillItem, 'id' | 'assignments'>[];
   success: boolean;
   error?: string;
 }
@@ -81,16 +81,14 @@ export async function processReceiptImage(
 
     try {
       const parsed = JSON.parse(content);
-      const items: BillItem[] = (parsed.items || []).map((item: any) => ({
-        id: '', // Se asignará después
+      const items: Omit<BillItem, 'id' | 'assignments'>[] = (parsed.items || []).map((item: any) => ({
         name: String(item.name || '').trim(),
         price: parseFloat(item.price) || 0,
         quantity: parseFloat(item.quantity) || 1,
-        assignments: [],
-      })).filter((item: BillItem) => item.name.length > 0 && item.price > 0 && item.quantity > 0);
+      })).filter((item: any) => item.name.length > 0 && item.price > 0 && item.quantity > 0);
 
       return {
-        items,
+        items: items as BillItem[],
         success: true,
       };
     } catch (parseError) {
