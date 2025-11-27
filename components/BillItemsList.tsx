@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BillItem } from '@/lib/types';
-import { getItemAssignedQuantity, getItemAvailableQuantity } from '@/lib/session-store';
+import { getItemAssignedQuantity, getItemAvailableQuantity } from '@/lib/session-helpers';
 
 interface BillItemsListProps {
   items: BillItem[];

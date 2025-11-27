@@ -125,15 +125,8 @@ export async function assignItemQuantityToUser(
   return session;
 }
 
-export function getItemAssignedQuantity(item: BillItem, userId: string): number {
-  const assignment = item.assignments.find(a => a.userId === userId);
-  return assignment ? assignment.quantity : 0;
-}
-
-export function getItemAvailableQuantity(item: BillItem): number {
-  const assignedQuantity = item.assignments.reduce((sum, a) => sum + a.quantity, 0);
-  return item.quantity - assignedQuantity;
-}
+// Re-exportar funciones helper para mantener compatibilidad
+export { getItemAssignedQuantity, getItemAvailableQuantity } from './session-helpers';
 
 export async function getUserTotal(sessionId: string, userId: string): Promise<number> {
   const session = await getSession(sessionId);
