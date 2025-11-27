@@ -2,6 +2,8 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   /* config options here */
+  
+  // Configuración para webpack (fallback)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // No incluir módulos de Node.js en el bundle del cliente
@@ -14,6 +16,14 @@ const nextConfig: NextConfig = {
       };
     }
     return config;
+  },
+  
+  // Configuración para Turbopack (Next.js 16+)
+  turbopack: {},
+  
+  // Configuración experimental para excluir paquetes del bundle del cliente
+  experimental: {
+    serverComponentsExternalPackages: ['ioredis'],
   },
 }
 
