@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const session = getSession(id);
+    const session = await getSession(id);
 
     if (!session) {
       return NextResponse.json(
@@ -18,11 +18,13 @@ export async function GET(
     }
 
     // Calcular totales por usuario
-    const userTotals = session.users.map(user => ({
-      userId: user.id,
-      userName: user.name,
-      total: getUserTotal(id, user.id),
-    }));
+    const userTotals = await Promise.all(
+      session.users.map(async (user) => ({
+        userId: user.id,
+        userName: user.name,
+        total: await getUserTotal(id, user.id),
+      }))
+    );
 
     return NextResponse.json({
       session: {
@@ -61,7 +63,7 @@ export async function POST(
         );
       }
 
-      const result = addUserToSession(id, userName);
+      const result = await addUserToSession(id, userName);
       if (!result) {
         return NextResponse.json(
           { error: 'Sesión no encontrada' },
@@ -70,7 +72,7 @@ export async function POST(
       }
 
       // Notificar a los clientes SSE
-      notifyClients(id);
+      await notifyClients(id);
 
       return NextResponse.json({
         user: result.user,
@@ -94,7 +96,7 @@ export async function POST(
         );
       }
 
-      const session = assignItemQuantityToUser(id, itemId, userId, qty);
+      const session = await assignItemQuantityToUser(id, itemId, userId, qty);
       if (!session) {
         return NextResponse.json(
           { error: 'Sesión o item no encontrado' },
@@ -103,9 +105,9 @@ export async function POST(
       }
 
       // Notificar a los clientes SSE
-      notifyClients(id);
+      await notifyClients(id);
 
-      const userTotal = getUserTotal(id, userId);
+      const userTotal = await getUserTotal(id, userId);
 
       return NextResponse.json({
         session,

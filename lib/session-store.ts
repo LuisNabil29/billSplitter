@@ -1,10 +1,19 @@
 import { Session, BillItem, User, ItemAssignment } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import Redis from 'ioredis';
 
-// Store en memoria para sesiones
-const sessions = new Map<string, Session>();
+// Conectar a Redis usando la URL de RedisLabs
+const redis = new Redis(process.env.REDIS_URL || '');
 
-export function createSession(imageUrl?: string): Session {
+// TTL para sesiones: 24 horas en segundos
+const SESSION_TTL = 24 * 60 * 60;
+
+// Helper para obtener la clave de Redis
+function getSessionKey(sessionId: string): string {
+  return `session:${sessionId}`;
+}
+
+export async function createSession(imageUrl?: string): Promise<Session> {
   const session: Session = {
     id: uuidv4(),
     createdAt: new Date(),
@@ -13,25 +22,35 @@ export function createSession(imageUrl?: string): Session {
     imageUrl,
   };
   
-  sessions.set(session.id, session);
+  await redis.set(getSessionKey(session.id), JSON.stringify(session), 'EX', SESSION_TTL);
   return session;
 }
 
-export function getSession(sessionId: string): Session | undefined {
-  return sessions.get(sessionId);
+export async function getSession(sessionId: string): Promise<Session | null> {
+  const data = await redis.get(getSessionKey(sessionId));
+  if (!data) return null;
+  
+  const session = JSON.parse(data);
+  // Convertir strings de fecha de vuelta a objetos Date
+  session.createdAt = new Date(session.createdAt);
+  session.users = session.users.map((u: any) => ({
+    ...u,
+    joinedAt: new Date(u.joinedAt),
+  }));
+  return session;
 }
 
-export function updateSession(sessionId: string, updates: Partial<Session>): Session | null {
-  const session = sessions.get(sessionId);
+export async function updateSession(sessionId: string, updates: Partial<Session>): Promise<Session | null> {
+  const session = await getSession(sessionId);
   if (!session) return null;
   
   const updatedSession = { ...session, ...updates };
-  sessions.set(sessionId, updatedSession);
+  await redis.set(getSessionKey(sessionId), JSON.stringify(updatedSession), 'EX', SESSION_TTL);
   return updatedSession;
 }
 
-export function addItemsToSession(sessionId: string, items: Omit<BillItem, 'id' | 'assignments'>[]): Session | null {
-  const session = sessions.get(sessionId);
+export async function addItemsToSession(sessionId: string, items: Omit<BillItem, 'id' | 'assignments'>[]): Promise<Session | null> {
+  const session = await getSession(sessionId);
   if (!session) return null;
   
   const newItems: BillItem[] = items.map(item => ({
@@ -41,12 +60,12 @@ export function addItemsToSession(sessionId: string, items: Omit<BillItem, 'id' 
   }));
   
   session.items.push(...newItems);
-  sessions.set(sessionId, session);
+  await redis.set(getSessionKey(sessionId), JSON.stringify(session), 'EX', SESSION_TTL);
   return session;
 }
 
-export function addUserToSession(sessionId: string, userName: string): { session: Session; user: User } | null {
-  const session = sessions.get(sessionId);
+export async function addUserToSession(sessionId: string, userName: string): Promise<{ session: Session; user: User } | null> {
+  const session = await getSession(sessionId);
   if (!session) return null;
   
   const user: User = {
@@ -56,17 +75,17 @@ export function addUserToSession(sessionId: string, userName: string): { session
   };
   
   session.users.push(user);
-  sessions.set(sessionId, session);
+  await redis.set(getSessionKey(sessionId), JSON.stringify(session), 'EX', SESSION_TTL);
   return { session, user };
 }
 
-export function assignItemQuantityToUser(
+export async function assignItemQuantityToUser(
   sessionId: string,
   itemId: string,
   userId: string,
   quantity: number
-): Session | null {
-  const session = sessions.get(sessionId);
+): Promise<Session | null> {
+  const session = await getSession(sessionId);
   if (!session) return null;
   
   const item = session.items.find(i => i.id === itemId);
@@ -102,7 +121,7 @@ export function assignItemQuantityToUser(
     }
   }
   
-  sessions.set(sessionId, session);
+  await redis.set(getSessionKey(sessionId), JSON.stringify(session), 'EX', SESSION_TTL);
   return session;
 }
 
@@ -116,8 +135,8 @@ export function getItemAvailableQuantity(item: BillItem): number {
   return item.quantity - assignedQuantity;
 }
 
-export function getUserTotal(sessionId: string, userId: string): number {
-  const session = sessions.get(sessionId);
+export async function getUserTotal(sessionId: string, userId: string): Promise<number> {
+  const session = await getSession(sessionId);
   if (!session) return 0;
   
   return session.items.reduce((total, item) => {
@@ -130,7 +149,9 @@ export function getUserTotal(sessionId: string, userId: string): number {
   }, 0);
 }
 
-export function getAllSessionIds(): string[] {
-  return Array.from(sessions.keys());
+export async function getAllSessionIds(): Promise<string[]> {
+  // En Redis, listar todas las claves con patrón session:*
+  const keys = await redis.keys('session:*');
+  return keys.map(key => key.replace('session:', ''));
 }
 

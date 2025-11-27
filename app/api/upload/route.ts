@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear sesión (no guardamos la imagen en el servidor por ahora)
-    const session = createSession();
+    const session = await createSession();
 
     // Agregar items a la sesión (esto asigna IDs únicos a cada item)
-    const updatedSession = addItemsToSession(session.id, ocrResult.items);
+    const updatedSession = await addItemsToSession(session.id, ocrResult.items);
     
     if (!updatedSession) {
       return NextResponse.json(

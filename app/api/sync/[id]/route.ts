@@ -8,12 +8,12 @@ export async function GET(
   const { id } = await params;
   
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       // Agregar cliente a la lista
       addClient(id, controller);
 
       // Enviar estado inicial
-      const initialData = getInitialSessionData(id);
+      const initialData = await getInitialSessionData(id);
       if (initialData) {
         controller.enqueue(`data: ${JSON.stringify(initialData)}\n\n`);
       }

@@ -17,15 +17,17 @@ export function removeClient(sessionId: string, controller: ReadableStreamDefaul
   }
 }
 
-export function notifyClients(sessionId: string) {
-  const session = getSession(sessionId);
+export async function notifyClients(sessionId: string) {
+  const session = await getSession(sessionId);
   if (!session) return;
 
-  const userTotals = session.users.map(user => ({
-    userId: user.id,
-    userName: user.name,
-    total: getUserTotal(sessionId, user.id),
-  }));
+  const userTotals = await Promise.all(
+    session.users.map(async (user) => ({
+      userId: user.id,
+      userName: user.name,
+      total: await getUserTotal(sessionId, user.id),
+    }))
+  );
 
   const data = JSON.stringify({
     type: 'update',
@@ -54,15 +56,17 @@ export function notifyClients(sessionId: string) {
   }
 }
 
-export function getInitialSessionData(sessionId: string) {
-  const session = getSession(sessionId);
+export async function getInitialSessionData(sessionId: string) {
+  const session = await getSession(sessionId);
   if (!session) return null;
 
-  const userTotals = session.users.map(user => ({
-    userId: user.id,
-    userName: user.name,
-    total: getUserTotal(sessionId, user.id),
-  }));
+  const userTotals = await Promise.all(
+    session.users.map(async (user) => ({
+      userId: user.id,
+      userName: user.name,
+      total: await getUserTotal(sessionId, user.id),
+    }))
+  );
 
   return {
     type: 'update',
