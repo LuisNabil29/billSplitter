@@ -25,6 +25,8 @@ export default function BillItemsList({
   const [editQuantity, setEditQuantity] = useState('');
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignQuantity, setAssignQuantity] = useState('');
+  const [dividingId, setDividingId] = useState<string | null>(null);
+  const [divideBy, setDivideBy] = useState('2');
 
   const handleStartEdit = (item: BillItem) => {
     setEditingId(item.id);
@@ -117,6 +119,45 @@ export default function BillItemsList({
     // Validar que no exceda lo disponible
     if (newQty <= availableQty && newQty >= 0) {
       onItemQuantityAssign(item.id, newQty);
+    }
+  };
+
+  const handleStartDivide = (item: BillItem) => {
+    setDividingId(item.id);
+    setDivideBy('2'); // Default: dividir entre 2
+  };
+
+  const handleCancelDivide = () => {
+    setDividingId(null);
+    setDivideBy('2');
+  };
+
+  const handleApplyDivision = (item: BillItem) => {
+    if (!onItemQuantityAssign || !currentUserId) return;
+
+    const divider = parseInt(divideBy);
+    if (isNaN(divider) || divider < 1) {
+      alert('El número de personas debe ser un valor válido mayor a 0');
+      return;
+    }
+
+    const currentQty = getItemAssignedQuantity(item, currentUserId);
+    const availableQty = getItemAvailableQuantity(item) + currentQty;
+    
+    // Calcular la fracción (1/divider)
+    const fraction = 1 / divider;
+    let newQty = currentQty + fraction;
+    
+    // Redondear a 2 decimales para evitar errores de punto flotante
+    newQty = Math.round(newQty * 100) / 100;
+    
+    // Validar que no exceda lo disponible
+    if (newQty <= availableQty && newQty >= 0) {
+      onItemQuantityAssign(item.id, newQty);
+      setDividingId(null);
+      setDivideBy('2');
+    } else {
+      alert('No hay suficiente cantidad disponible');
     }
   };
 
@@ -303,40 +344,53 @@ export default function BillItemsList({
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
                     {item.quantity === 1 ? (
                       <>
-                        {/* Botones de fracciones para items de cantidad 1 */}
-                        <span className="text-xs text-gray-600 self-center mr-1">Dividir:</span>
-                        <button
-                          onClick={() => handleFractionAssign(item, 0.25)}
-                          disabled={availableQty < 0.25}
-                          className="px-3 py-1.5 bg-accent-light/30 text-primary-dark rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                          title="Agregar ¼"
-                        >
-                          +¼
-                        </button>
-                        <button
-                          onClick={() => handleFractionAssign(item, 0.5)}
-                          disabled={availableQty < 0.5}
-                          className="px-3 py-1.5 bg-accent-light/30 text-primary-dark rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                          title="Agregar ½"
-                        >
-                          +½
-                        </button>
-                        <button
-                          onClick={() => handleFractionAssign(item, 0.75)}
-                          disabled={availableQty < 0.75}
-                          className="px-3 py-1.5 bg-accent-light/30 text-primary-dark rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                          title="Agregar ¾"
-                        >
-                          +¾
-                        </button>
-                        <button
-                          onClick={() => handleQuickAssign(item)}
-                          disabled={availableQty < 1}
-                          className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors ml-2"
-                          title="Asignar 1 unidad completa"
-                        >
-                          +1
-                        </button>
+                        {/* Interfaz para dividir entre N personas */}
+                        {dividingId === item.id ? (
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="text-xs text-gray-600">Dividir entre:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={divideBy}
+                              onChange={(e) => setDivideBy(e.target.value)}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                              placeholder="N"
+                            />
+                            <span className="text-xs text-gray-600">personas</span>
+                            <button
+                              onClick={() => handleApplyDivision(item)}
+                              className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark text-sm font-medium transition-colors"
+                            >
+                              Aplicar
+                            </button>
+                            <button
+                              onClick={handleCancelDivide}
+                              className="px-3 py-1.5 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleStartDivide(item)}
+                              disabled={availableQty < 0.01}
+                              className="px-3 py-1.5 bg-accent-light/30 text-primary-dark rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                              title="Dividir entre N personas"
+                            >
+                              Dividir entre...
+                            </button>
+                            <button
+                              onClick={() => handleQuickAssign(item)}
+                              disabled={availableQty < 1}
+                              className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                              title="Asignar 1 unidad completa"
+                            >
+                              +1
+                            </button>
+                          </>
+                        )}
                       </>
                     ) : (
                       <>
