@@ -89,9 +89,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-primary-dark">
-          Bill Splitter
-        </h1>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-primary-dark">
+            Bill Splitter
+          </h1>
+          <p className="text-sm text-gray-500 mt-2">By Luis Nabil</p>
+        </div>
         <p className="text-center text-gray-700 mb-8">
           Sube una imagen de tu cuenta y divide los gastos fácilmente
         </p>

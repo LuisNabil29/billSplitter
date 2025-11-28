@@ -209,11 +209,11 @@ export default function BillItemsList({
         return (
           <div
             key={item.id}
-                    className={`
+            className={`
               p-4 rounded-lg border-2 transition-all
               ${
                 currentUserQty > 0
-                  ? 'border-primary bg-accent-peach/20'
+                  ? 'border-primary bg-gradient-to-r from-slate-800 to-slate-700 shadow-lg shadow-primary/30'
                   : hasAssignments
                   ? 'border-primary-light/30 bg-accent-light/10'
                   : 'border-gray-200 bg-white hover:border-primary-light'
@@ -266,8 +266,10 @@ export default function BillItemsList({
             ) : assigningId === item.id && editable && onItemQuantityAssign ? (
               <div className="space-y-2">
                 <div className="flex gap-2 items-center">
-                  <span className="flex-1 font-medium text-gray-900">{item.name}</span>
-                  <span className="text-sm text-gray-600">
+                  <span className={`flex-1 font-medium ${currentUserQty > 0 ? 'text-white' : 'text-gray-900'}`}>
+                    {item.name}
+                  </span>
+                  <span className={`text-sm ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-600'}`}>
                     Disponible: {availableQty + currentUserQty}
                   </span>
                   <input
@@ -299,19 +301,19 @@ export default function BillItemsList({
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">
+                    <div className={`font-medium ${currentUserQty > 0 ? 'text-white' : 'text-gray-900'}`}>
                       {item.name}
                       {item.quantity > 1 && (
-                        <span className="ml-2 text-sm font-normal text-gray-600">
+                        <span className={`ml-2 text-sm font-normal ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-600'}`}>
                           (x{item.quantity})
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className={`text-sm mt-1 ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-500'}`}>
                       ${item.price.toFixed(2)} c/u • Total: ${getTotalPrice(item).toFixed(2)}
                     </div>
                     {hasAssignments && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className={`text-xs mt-1 ${currentUserQty > 0 ? 'text-gray-400' : 'text-gray-500'}`}>
                         {item.assignments.map((assignment, idx) => (
                           <span key={assignment.userId}>
                             {idx > 0 && ', '}
@@ -322,8 +324,11 @@ export default function BillItemsList({
                       </div>
                     )}
                     {currentUserQty > 0 && (
-                      <div className="text-sm text-primary-dark font-medium mt-1">
-                        ✓ Tú tienes: {formatQuantity(currentUserQty)} (${(item.price * currentUserQty).toFixed(2)})
+                      <div className="flex items-center gap-2 mt-2 text-sm font-bold text-accent-light bg-primary-dark/40 px-3 py-2 rounded-md border border-primary/60 shadow-sm">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span>Tú tienes: {formatQuantity(currentUserQty)} (${(item.price * currentUserQty).toFixed(2)})</span>
                       </div>
                     )}
                   </div>
@@ -331,7 +336,11 @@ export default function BillItemsList({
                     <div className="flex flex-col gap-2 ml-4">
                       <button
                         onClick={() => handleStartEdit(item)}
-                        className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-xs"
+                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                          currentUserQty > 0
+                            ? 'bg-slate-600 text-white hover:bg-slate-500'
+                            : 'bg-gray-600 text-white hover:bg-gray-700'
+                        }`}
                       >
                         Editar
                       </button>
@@ -341,13 +350,15 @@ export default function BillItemsList({
 
                 {/* Botones de asignación */}
                 {editable && onItemQuantityAssign && currentUserId && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                  <div className={`flex flex-wrap gap-2 pt-2 border-t ${currentUserQty > 0 ? 'border-gray-600' : 'border-gray-200'}`}>
                     {item.quantity === 1 ? (
                       <>
                         {/* Interfaz para dividir entre N personas */}
                         {dividingId === item.id ? (
                           <div className="flex items-center gap-2 w-full">
-                            <span className="text-xs text-gray-600">Dividir entre:</span>
+                            <span className={`text-xs ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-600'}`}>
+                              Dividir entre:
+                            </span>
                             <input
                               type="number"
                               min="1"
@@ -357,10 +368,16 @@ export default function BillItemsList({
                               className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
                               placeholder="N"
                             />
-                            <span className="text-xs text-gray-600">personas</span>
+                            <span className={`text-xs ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-600'}`}>
+                              personas
+                            </span>
                             <button
                               onClick={() => handleApplyDivision(item)}
-                              className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark text-sm font-medium transition-colors"
+                              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                currentUserQty > 0
+                                  ? 'bg-primary text-white hover:bg-primary-dark'
+                                  : 'bg-primary text-white hover:bg-primary-dark'
+                              }`}
                             >
                               Aplicar
                             </button>
@@ -376,7 +393,11 @@ export default function BillItemsList({
                             <button
                               onClick={() => handleStartDivide(item)}
                               disabled={availableQty < 0.01}
-                              className="px-3 py-1.5 bg-accent-light/30 text-primary-dark rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                              className={`px-3 py-1.5 rounded-md hover:bg-accent-light/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors ${
+                                currentUserQty > 0
+                                  ? 'bg-accent text-white hover:bg-accent-light hover:text-primary-dark'
+                                  : 'bg-accent-light/30 text-primary-dark'
+                              }`}
                               title="Dividir entre N personas"
                             >
                               Dividir entre...
@@ -384,7 +405,11 @@ export default function BillItemsList({
                             <button
                               onClick={() => handleQuickAssign(item)}
                               disabled={availableQty < 1}
-                              className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                              className={`px-3 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors ${
+                                currentUserQty > 0
+                                  ? 'bg-primary text-white hover:bg-primary-light'
+                                  : 'bg-primary text-white hover:bg-primary-dark'
+                              }`}
                               title="Asignar 1 unidad completa"
                             >
                               +1
@@ -398,7 +423,11 @@ export default function BillItemsList({
                         <button
                           onClick={() => handleQuickAssign(item)}
                           disabled={availableQty < 1}
-                          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                          className={`px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors ${
+                            currentUserQty > 0
+                              ? 'bg-primary text-white hover:bg-primary-light'
+                              : 'bg-primary text-white hover:bg-primary-dark'
+                          }`}
                         >
                           {currentUserQty > 0 ? `+1 (Tienes ${formatQuantity(currentUserQty)})` : 'Asignar 1'}
                         </button>
@@ -409,7 +438,7 @@ export default function BillItemsList({
                     {currentUserQty > 0 && (
                       <button
                         onClick={() => handleRemoveAssignment(item)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                        className="px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-600 font-medium transition-colors"
                       >
                         Quitar ({formatQuantity(currentUserQty)})
                       </button>
