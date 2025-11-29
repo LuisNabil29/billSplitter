@@ -43,11 +43,14 @@ export async function notifyClients(sessionId: string) {
   });
 
   const message = `data: ${data}\n\n`;
+  const encoder = new TextEncoder();
+  const encodedMessage = encoder.encode(message);
+  
   const sessionClients = clients.get(sessionId);
   if (sessionClients) {
     sessionClients.forEach(controller => {
       try {
-        controller.enqueue(message);
+        controller.enqueue(encodedMessage);
       } catch (error) {
         // Cliente desconectado, removerlo
         sessionClients.delete(controller);

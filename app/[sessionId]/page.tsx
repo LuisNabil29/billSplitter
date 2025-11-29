@@ -22,6 +22,15 @@ export default function SessionPage() {
   // Cargar sesión inicial
   useEffect(() => {
     loadSession();
+    
+    // Intentar cargar el userId y userName desde localStorage
+    const storedUserId = localStorage.getItem(`billsplitter-${sessionId}-userId`);
+    const storedUserName = localStorage.getItem(`billsplitter-${sessionId}-userName`);
+    
+    if (storedUserId && storedUserName) {
+      setCurrentUserId(storedUserId);
+      setCurrentUserName(storedUserName);
+    }
   }, [sessionId]);
 
   // Configurar SSE para actualizaciones en tiempo real
@@ -114,6 +123,10 @@ export default function SessionPage() {
 
       setCurrentUserId(data.user.id);
       setCurrentUserName(data.user.name);
+      
+      // Guardar en localStorage para persistir la sesión
+      localStorage.setItem(`billsplitter-${sessionId}-userId`, data.user.id);
+      localStorage.setItem(`billsplitter-${sessionId}-userName`, data.user.name);
       
       // La actualización vendrá vía SSE
     } catch (err: any) {

@@ -68,6 +68,15 @@ export async function addUserToSession(sessionId: string, userName: string): Pro
   const session = await getSession(sessionId);
   if (!session) return null;
   
+  // Buscar si ya existe un usuario con el mismo nombre
+  const existingUser = session.users.find(u => u.name.toLowerCase() === userName.toLowerCase());
+  
+  if (existingUser) {
+    // Retornar el usuario existente en lugar de crear uno nuevo
+    return { session, user: existingUser };
+  }
+  
+  // Si no existe, crear un nuevo usuario
   const user: User = {
     id: uuidv4(),
     name: userName,
