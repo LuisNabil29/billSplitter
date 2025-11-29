@@ -278,7 +278,7 @@ export default function BillItemsList({
                     max={availableQty + currentUserQty}
                     value={assignQuantity}
                     onChange={(e) => setAssignQuantity(e.target.value)}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                     placeholder="Cantidad"
                   />
                 </div>
@@ -332,20 +332,6 @@ export default function BillItemsList({
                       </div>
                     )}
                   </div>
-                  {editable && (
-                    <div className="flex flex-col gap-2 ml-4">
-                      <button
-                        onClick={() => handleStartEdit(item)}
-                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
-                          currentUserQty > 0
-                            ? 'bg-slate-600 text-white hover:bg-slate-500'
-                            : 'bg-gray-600 text-white hover:bg-gray-700'
-                        }`}
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Botones de asignación */}
@@ -365,7 +351,7 @@ export default function BillItemsList({
                               max="20"
                               value={divideBy}
                               onChange={(e) => setDivideBy(e.target.value)}
-                              className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                              className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm bg-white text-gray-900"
                               placeholder="N"
                             />
                             <span className={`text-xs ${currentUserQty > 0 ? 'text-gray-300' : 'text-gray-600'}`}>
