@@ -156,6 +156,7 @@ export default function Home() {
                   items={items}
                   onItemEdit={handleItemEdit}
                   editable={true}
+                  showEditButton={true}
                 />
               </div>
 

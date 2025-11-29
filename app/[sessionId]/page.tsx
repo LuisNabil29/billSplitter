@@ -244,6 +244,7 @@ export default function SessionPage() {
                     onItemQuantityAssign={handleItemQuantityAssign}
                     currentUserId={currentUserId}
                     editable={true}
+                    showEditButton={false}
                   />
                 </div>
 

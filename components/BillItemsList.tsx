@@ -10,6 +10,7 @@ interface BillItemsListProps {
   onItemQuantityAssign?: (itemId: string, quantity: number) => void;
   currentUserId?: string;
   editable?: boolean;
+  showEditButton?: boolean;
 }
 
 export default function BillItemsList({
@@ -18,6 +19,7 @@ export default function BillItemsList({
   onItemQuantityAssign,
   currentUserId,
   editable = true,
+  showEditButton = true,
 }: BillItemsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -332,6 +334,20 @@ export default function BillItemsList({
                       </div>
                     )}
                   </div>
+                  {editable && showEditButton && (
+                    <div className="flex flex-col gap-2 ml-4">
+                      <button
+                        onClick={() => handleStartEdit(item)}
+                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                          currentUserQty > 0
+                            ? 'bg-slate-600 text-white hover:bg-slate-500'
+                            : 'bg-gray-600 text-white hover:bg-gray-700'
+                        }`}
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Botones de asignación */}
