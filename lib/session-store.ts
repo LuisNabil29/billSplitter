@@ -125,6 +125,32 @@ export async function assignItemQuantityToUser(
   return session;
 }
 
+export async function updateItemInSession(
+  sessionId: string,
+  itemId: string,
+  updates: { name?: string; price?: number; quantity?: number }
+): Promise<Session | null> {
+  const session = await getSession(sessionId);
+  if (!session) return null;
+  
+  const item = session.items.find(i => i.id === itemId);
+  if (!item) return null;
+  
+  // Aplicar actualizaciones
+  if (updates.name !== undefined) {
+    item.name = updates.name;
+  }
+  if (updates.price !== undefined) {
+    item.price = updates.price;
+  }
+  if (updates.quantity !== undefined) {
+    item.quantity = updates.quantity;
+  }
+  
+  await redis.set(getSessionKey(sessionId), JSON.stringify(session), 'EX', SESSION_TTL);
+  return session;
+}
+
 // Re-exportar funciones helper para mantener compatibilidad
 export { getItemAssignedQuantity, getItemAvailableQuantity } from './session-helpers';
 

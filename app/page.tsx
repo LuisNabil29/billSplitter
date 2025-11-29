@@ -80,8 +80,28 @@ export default function Home() {
       )
     );
 
-    // TODO: Enviar actualización al servidor si es necesario
-    // Por ahora solo actualizamos localmente ya que el estado está en memoria del servidor
+    // Enviar actualización al servidor para sincronizar con invitados
+    try {
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateItem',
+          itemId,
+          updates,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al actualizar item');
+      }
+    } catch (err: any) {
+      console.error('Error updating item:', err);
+      alert(err.message || 'Error al actualizar item. Por favor intenta de nuevo.');
+    }
   };
 
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);

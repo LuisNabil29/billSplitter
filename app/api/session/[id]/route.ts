@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, updateSession, addUserToSession, assignItemQuantityToUser, getUserTotal } from '@/lib/session-store';
+import { getSession, updateSession, addUserToSession, assignItemQuantityToUser, updateItemInSession, getUserTotal } from '@/lib/session-store';
 import { notifyClients } from '@/lib/sse-notifier';
 
 export async function GET(
@@ -53,7 +53,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { action, userName, itemId, userId, quantity } = body;
+    const { action, userName, itemId, userId, quantity, updates } = body;
 
     if (action === 'addUser') {
       if (!userName) {
@@ -112,6 +112,30 @@ export async function POST(
       return NextResponse.json({
         session,
         userTotal,
+      });
+    }
+
+    if (action === 'updateItem') {
+      if (!itemId || !updates) {
+        return NextResponse.json(
+          { error: 'itemId y updates requeridos' },
+          { status: 400 }
+        );
+      }
+
+      const session = await updateItemInSession(id, itemId, updates);
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Sesión o item no encontrado' },
+          { status: 404 }
+        );
+      }
+
+      // Notificar a los clientes SSE
+      await notifyClients(id);
+
+      return NextResponse.json({
+        session,
       });
     }
 
