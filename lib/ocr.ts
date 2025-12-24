@@ -14,6 +14,7 @@ const getOpenAIClient = () => {
 
 export interface OCRResult {
   items: Omit<BillItem, 'id' | 'assignments'>[];
+  totalFromReceipt?: number; // Total extraído de la imagen
   success: boolean;
   error?: string;
 }
@@ -36,19 +37,22 @@ export async function processReceiptImage(
         {
           role: 'system',
           content: `Eres un asistente experto en extraer información de recibos de restaurantes. 
-          Analiza la imagen del recibo y extrae todos los items con sus precios.
+          Analiza la imagen del recibo y extrae todos los items con sus precios y el total del recibo.
           Responde SOLO con un JSON válido en el siguiente formato:
           {
             "items": [
               {"name": "nombre del item", "price": 25.50, "quantity": 2},
               {"name": "otro item", "price": 15.00, "quantity": 1}
-            ]
+            ],
+            "total": 450.00
           }
           - "price" es el precio UNITARIO de cada item
           - "quantity" es la cantidad de ese item (si no se especifica, usa 1)
+          - "total" es el monto total final que aparece en el recibo (busca "Total", "Total a Pagar", etc.)
           Si no puedes identificar claramente un precio, usa 0.00.
           Si no puedes identificar la cantidad, usa 1.
-          Ignora impuestos, propinas y totales generales. Solo extrae los items individuales.`,
+          Si no encuentras el total del recibo, omite el campo "total".
+          Ignora impuestos, propinas y subtotales. Solo extrae los items individuales y el total final.`,
         },
         {
           role: 'user',
@@ -87,8 +91,11 @@ export async function processReceiptImage(
         quantity: parseFloat(item.quantity) || 1,
       })).filter((item: any) => item.name.length > 0 && item.price > 0 && item.quantity > 0);
 
+      const totalFromReceipt = parsed.total ? parseFloat(parsed.total) : undefined;
+
       return {
         items: items as BillItem[],
+        totalFromReceipt,
         success: true,
       };
     } catch (parseError) {
@@ -187,3 +194,191 @@ export function optimizeImage(file: File, maxWidth: number = 1920, maxHeight: nu
   });
 }
 
+/**
+ * Interface para el resultado de la verificación
+ */
+export interface VerificationResult {
+  items: Omit<BillItem, 'id' | 'assignments'>[];
+  totalExpected?: number;
+  totalCalculated: number;
+  issues: Array<{
+    itemIndex: number;
+    type: 'unit_price_mismatch' | 'sum_mismatch' | 'suspicious_quantity';
+    message: string;
+    suggestedFix?: {
+      price?: number;
+      quantity?: number;
+    };
+  }>;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Verifica y corrige items extraídos comparando con la imagen original
+ * Esta es la "segunda pasada" que detecta errores como precios totales en lugar de unitarios
+ */
+export async function verifyAndCorrectItems(
+  items: Omit<BillItem, 'id' | 'assignments'>[],
+  imageBase64: string,
+  imageMimeType: string,
+  totalFromReceipt?: number
+): Promise<VerificationResult> {
+  try {
+    const openai = getOpenAIClient();
+
+    // Calcular el total actual
+    const totalCalculated = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Preparar el contexto para la IA
+    const itemsContext = items.map((item, idx) => ({
+      index: idx,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      subtotal: item.price * item.quantity,
+    }));
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Eres un verificador experto de extracciones de recibos de restaurantes.
+          
+Tu tarea es revisar una lista de items extraídos y compararla con la imagen original del recibo para detectar errores comunes.
+
+**Errores comunes a detectar:**
+
+1. **Precio total en lugar de unitario (unit_price_mismatch)**:
+   - Si quantity > 1 y el "price" parece ser el TOTAL (no el unitario)
+   - Ejemplo: quantity=3, price=150, pero en la imagen dice "$50 c/u × 3 = $150"
+   - En este caso, el precio unitario correcto sería: 150 / 3 = 50
+   
+2. **Suma no cuadra con el total del recibo (sum_mismatch)**:
+   - Si el total calculado (suma de price × quantity) difiere del total del recibo en más del 5%
+   - Revisa si algún item fue extraído incorrectamente
+   
+3. **Cantidad sospechosa (suspicious_quantity)**:
+   - Si la cantidad parece incorrecta comparada con lo que aparece en la imagen
+
+**Responde SOLO con JSON válido:**
+{
+  "totalExpected": 450.00,
+  "totalCalculated": 445.50,
+  "issues": [
+    {
+      "itemIndex": 0,
+      "type": "unit_price_mismatch",
+      "message": "El precio $150 parece ser el total de 3 unidades, no el unitario. Precio unitario sugerido: $50",
+      "suggestedFix": { "price": 50.00 }
+    }
+  ]
+}
+
+Si no encuentras problemas, devuelve un array vacío en "issues".
+Si no hay un total esperado del recibo, omite "totalExpected".`,
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${imageMimeType};base64,${imageBase64}`,
+              },
+            },
+            {
+              type: 'text',
+              text: `Verifica estos items extraídos del recibo:
+
+Items extraídos:
+${JSON.stringify(itemsContext, null, 2)}
+
+Total del recibo detectado: ${totalFromReceipt ? `$${totalFromReceipt.toFixed(2)}` : 'No disponible'}
+Total calculado (suma de items): $${totalCalculated.toFixed(2)}
+
+Por favor verifica:
+1. ¿El "price" de cada item es el precio UNITARIO o el total?
+2. ¿La suma de todos los items cuadra con el total del recibo?
+3. ¿Las cantidades son correctas?
+
+Identifica problemas y sugiere correcciones.`,
+            },
+          ],
+        },
+      ],
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return {
+        items,
+        totalCalculated,
+        totalExpected: totalFromReceipt,
+        issues: [],
+        success: false,
+        error: 'No se recibió respuesta de OpenAI en la verificación',
+      };
+    }
+
+    try {
+      const parsed = JSON.parse(content);
+      const issues = parsed.issues || [];
+
+      // Aplicar las correcciones sugeridas a los items
+      const correctedItems = items.map((item, idx) => {
+        const issue = issues.find((i: any) => i.itemIndex === idx);
+        if (issue && issue.suggestedFix) {
+          return {
+            ...item,
+            price: issue.suggestedFix.price ?? item.price,
+            quantity: issue.suggestedFix.quantity ?? item.quantity,
+            verificationIssue: {
+              type: issue.type,
+              message: issue.message,
+              suggestedFix: issue.suggestedFix,
+            },
+          };
+        }
+        return item;
+      });
+
+      // Recalcular el total con las correcciones
+      const newTotalCalculated = correctedItems.reduce(
+        (sum, item) => sum + (item.price * item.quantity),
+        0
+      );
+
+      return {
+        items: correctedItems,
+        totalExpected: parsed.totalExpected || totalFromReceipt,
+        totalCalculated: newTotalCalculated,
+        issues,
+        success: true,
+      };
+    } catch (parseError) {
+      console.error('Error parsing verification response:', parseError);
+      return {
+        items,
+        totalCalculated,
+        totalExpected: totalFromReceipt,
+        issues: [],
+        success: false,
+        error: 'Error al parsear la respuesta de verificación',
+      };
+    }
+  } catch (error: any) {
+    console.error('Error in verification:', error);
+    return {
+      items,
+      totalCalculated: items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+      totalExpected: totalFromReceipt,
+      issues: [],
+      success: false,
+      error: error.message || 'Error desconocido en la verificación',
+    };
+  }
+}

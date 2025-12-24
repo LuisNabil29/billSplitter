@@ -104,6 +104,64 @@ export default function Home() {
     }
   };
 
+  const handleAcceptSuggestedFix = async (itemId: string) => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'applySuggestedFix',
+          itemId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al aplicar corrección');
+      }
+
+      // Actualizar items localmente
+      setItems(data.session.items);
+    } catch (err: any) {
+      console.error('Error applying fix:', err);
+      alert(err.message || 'Error al aplicar corrección. Por favor intenta de nuevo.');
+    }
+  };
+
+  const handleDismissVerificationIssue = async (itemId: string) => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'dismissVerificationIssue',
+          itemId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al descartar issue');
+      }
+
+      // Actualizar items localmente
+      setItems(data.session.items);
+    } catch (err: any) {
+      console.error('Error dismissing issue:', err);
+      alert(err.message || 'Error al descartar issue. Por favor intenta de nuevo.');
+    }
+  };
+
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   return (
@@ -114,6 +172,7 @@ export default function Home() {
             Bill Splitter
           </h1>
           <p className="text-sm text-gray-500 mt-2">By Luis Nabil</p>
+          <p className="text-xs text-gray-400 mt-1">Última actualización: 24/12/25</p>
         </div>
         <p className="text-center text-gray-700 mb-8">
           Sube una imagen de tu cuenta y divide los gastos fácilmente
@@ -177,6 +236,8 @@ export default function Home() {
                   onItemEdit={handleItemEdit}
                   editable={true}
                   showEditButton={true}
+                  onAcceptSuggestedFix={handleAcceptSuggestedFix}
+                  onDismissVerificationIssue={handleDismissVerificationIssue}
                 />
               </div>
 

@@ -139,6 +139,100 @@ export async function POST(
       });
     }
 
+    if (action === 'applySuggestedFix') {
+      if (!itemId) {
+        return NextResponse.json(
+          { error: 'itemId requerido' },
+          { status: 400 }
+        );
+      }
+
+      // Obtener la sesión y el item
+      const session = await getSession(id);
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Sesión no encontrada' },
+          { status: 404 }
+        );
+      }
+
+      const item = session.items.find(i => i.id === itemId);
+      if (!item || !item.verificationIssue?.suggestedFix) {
+        return NextResponse.json(
+          { error: 'Item o corrección sugerida no encontrada' },
+          { status: 404 }
+        );
+      }
+
+      // Aplicar la corrección sugerida
+      const suggestedFix = item.verificationIssue.suggestedFix;
+      const updatedSession = await updateItemInSession(id, itemId, {
+        price: suggestedFix.price ?? item.price,
+        quantity: suggestedFix.quantity ?? item.quantity,
+      });
+
+      if (!updatedSession) {
+        return NextResponse.json(
+          { error: 'Error al actualizar item' },
+          { status: 500 }
+        );
+      }
+
+      // Remover el verificationIssue del item después de aplicar la corrección
+      const updatedItem = updatedSession.items.find(i => i.id === itemId);
+      if (updatedItem) {
+        delete updatedItem.verificationIssue;
+        // Guardar la sesión con el verificationIssue removido
+        await updateSession(id, updatedSession);
+      }
+
+      // Notificar a los clientes SSE
+      await notifyClients(id);
+
+      return NextResponse.json({
+        session: updatedSession,
+      });
+    }
+
+    if (action === 'dismissVerificationIssue') {
+      if (!itemId) {
+        return NextResponse.json(
+          { error: 'itemId requerido' },
+          { status: 400 }
+        );
+      }
+
+      // Obtener la sesión y el item
+      const session = await getSession(id);
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Sesión no encontrada' },
+          { status: 404 }
+        );
+      }
+
+      const item = session.items.find(i => i.id === itemId);
+      if (!item) {
+        return NextResponse.json(
+          { error: 'Item no encontrado' },
+          { status: 404 }
+        );
+      }
+
+      // Remover el verificationIssue
+      delete item.verificationIssue;
+
+      // Actualizar la sesión
+      const updatedSession = await updateSession(id, session);
+
+      // Notificar a los clientes SSE
+      await notifyClients(id);
+
+      return NextResponse.json({
+        session: updatedSession,
+      });
+    }
+
     return NextResponse.json(
       { error: 'Acción no válida' },
       { status: 400 }

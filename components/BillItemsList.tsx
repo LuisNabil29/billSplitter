@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BillItem } from '@/lib/types';
 import { getItemAssignedQuantity, getItemAvailableQuantity } from '@/lib/session-helpers';
+import VerificationPanel from './VerificationPanel';
 
 interface BillItemsListProps {
   items: BillItem[];
@@ -11,6 +12,8 @@ interface BillItemsListProps {
   currentUserId?: string;
   editable?: boolean;
   showEditButton?: boolean;
+  onAcceptSuggestedFix?: (itemId: string) => void;
+  onDismissVerificationIssue?: (itemId: string) => void;
 }
 
 export default function BillItemsList({
@@ -20,6 +23,8 @@ export default function BillItemsList({
   currentUserId,
   editable = true,
   showEditButton = true,
+  onAcceptSuggestedFix,
+  onDismissVerificationIssue,
 }: BillItemsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -166,6 +171,25 @@ export default function BillItemsList({
   const handleRemoveAssignment = (item: BillItem) => {
     if (!onItemQuantityAssign || !currentUserId) return;
     onItemQuantityAssign(item.id, 0);
+  };
+
+  const handleAcceptFix = (itemId: string) => {
+    if (onAcceptSuggestedFix) {
+      onAcceptSuggestedFix(itemId);
+    }
+  };
+
+  const handleDismissIssue = (itemId: string) => {
+    if (onDismissVerificationIssue) {
+      onDismissVerificationIssue(itemId);
+    }
+  };
+
+  const handleManualEdit = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (item) {
+      handleStartEdit(item);
+    }
   };
 
   const getCurrentUserQuantity = (item: BillItem) => {
@@ -447,6 +471,14 @@ export default function BillItemsList({
                     )}
                   </div>
                 )}
+
+                {/* Panel de verificación - mostrar si hay issues */}
+                <VerificationPanel
+                  item={item}
+                  onAcceptFix={handleAcceptFix}
+                  onDismissIssue={handleDismissIssue}
+                  onManualEdit={handleManualEdit}
+                />
               </div>
             )}
           </div>

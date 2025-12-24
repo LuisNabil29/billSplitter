@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processReceiptImage } from '@/lib/ocr';
+import { processReceiptImage, verifyAndCorrectItems } from '@/lib/ocr';
 import { createSession, addItemsToSession } from '@/lib/session-store';
 import { getSessionURL, generateQRCodeDataURL } from '@/lib/qr-generator';
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Procesar imagen con OCR
+    // Paso 1: Extracción inicial con OCR
     const ocrResult = await processReceiptImage(imageBase64, imageMimeType);
 
     if (!ocrResult.success || ocrResult.items.length === 0) {
@@ -30,11 +30,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Paso 2: Verificación automática (segunda pasada)
+    const verificationResult = await verifyAndCorrectItems(
+      ocrResult.items,
+      imageBase64,
+      imageMimeType,
+      ocrResult.totalFromReceipt
+    );
+
+    // Usar los items verificados (con correcciones aplicadas si las hay)
+    const itemsToUse = verificationResult.success ? verificationResult.items : ocrResult.items;
+
     // Crear sesión (no guardamos la imagen en el servidor por ahora)
     const session = await createSession();
 
     // Agregar items a la sesión (esto asigna IDs únicos a cada item)
-    const updatedSession = await addItemsToSession(session.id, ocrResult.items);
+    const updatedSession = await addItemsToSession(session.id, itemsToUse);
     
     if (!updatedSession) {
       return NextResponse.json(
@@ -52,6 +63,11 @@ export async function POST(request: NextRequest) {
       items: updatedSession.items, // Usar items con IDs asignados
       qrCode: qrCodeDataURL,
       sessionURL,
+      // Información de verificación
+      totalFromReceipt: verificationResult.totalExpected,
+      totalCalculated: verificationResult.totalCalculated,
+      hasIssues: verificationResult.issues.length > 0,
+      verificationIssues: verificationResult.issues,
     });
   } catch (error: any) {
     console.error('Error en /api/upload:', error);

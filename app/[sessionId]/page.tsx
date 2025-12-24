@@ -197,6 +197,62 @@ export default function SessionPage() {
     // Por ahora solo actualizamos localmente ya que el estado está en memoria del servidor
   };
 
+  const handleAcceptSuggestedFix = async (itemId: string) => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'applySuggestedFix',
+          itemId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al aplicar corrección');
+      }
+
+      // La actualización vendrá vía SSE
+    } catch (err: any) {
+      console.error('Error applying fix:', err);
+      alert(err.message || 'Error al aplicar corrección. Por favor intenta de nuevo.');
+    }
+  };
+
+  const handleDismissVerificationIssue = async (itemId: string) => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'dismissVerificationIssue',
+          itemId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al descartar issue');
+      }
+
+      // La actualización vendrá vía SSE
+    } catch (err: any) {
+      console.error('Error dismissing issue:', err);
+      alert(err.message || 'Error al descartar issue. Por favor intenta de nuevo.');
+    }
+  };
+
   // Notificar cambios al servidor para que propague vía SSE
   useEffect(() => {
     if (session && sessionId) {
@@ -258,6 +314,8 @@ export default function SessionPage() {
                     currentUserId={currentUserId}
                     editable={true}
                     showEditButton={false}
+                    onAcceptSuggestedFix={handleAcceptSuggestedFix}
+                    onDismissVerificationIssue={handleDismissVerificationIssue}
                   />
                 </div>
 
