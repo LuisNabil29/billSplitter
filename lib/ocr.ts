@@ -16,10 +16,11 @@ export interface OCRResult {
   items: Omit<BillItem, 'id' | 'assignments'>[];
   success: boolean;
   error?: string;
+  model?: string;
 }
 
 /**
- * Procesa una imagen usando GPT-4o-mini para extraer items de una cuenta de restaurante
+ * Procesa una imagen usando GPT-5-nano para extraer items de una cuenta de restaurante
  * @param imageBase64 - Imagen en base64 (sin el prefijo data:image/...)
  * @param imageMimeType - Tipo MIME de la imagen (ej: 'image/jpeg', 'image/png')
  */
@@ -27,11 +28,12 @@ export async function processReceiptImage(
   imageBase64: string,
   imageMimeType: string
 ): Promise<OCRResult> {
+  const modelName = 'gpt-5-nano';
   try {
     const openai = getOpenAIClient();
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: modelName,
       messages: [
         {
           role: 'system',
@@ -76,6 +78,7 @@ export async function processReceiptImage(
         items: [],
         success: false,
         error: 'No se recibió respuesta de OpenAI',
+        model: modelName,
       };
     }
 
@@ -90,6 +93,7 @@ export async function processReceiptImage(
       return {
         items: items as BillItem[],
         success: true,
+        model: modelName,
       };
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
@@ -97,6 +101,7 @@ export async function processReceiptImage(
         items: [],
         success: false,
         error: 'Error al parsear la respuesta de OpenAI',
+        model: modelName,
       };
     }
   } catch (error: any) {
@@ -105,6 +110,7 @@ export async function processReceiptImage(
       items: [],
       success: false,
       error: error.message || 'Error desconocido al procesar la imagen',
+      model: 'gpt-5-nano',
     };
   }
 }

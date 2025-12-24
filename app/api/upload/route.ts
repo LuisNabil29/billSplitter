@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       items: updatedSession.items, // Usar items con IDs asignados
       qrCode: qrCodeDataURL,
       sessionURL,
+      model: ocrResult.model, // Informar qué modelo se usó
     });
   } catch (error: any) {
     console.error('Error en /api/upload:', error);
