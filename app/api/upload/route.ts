@@ -53,6 +53,10 @@ export async function POST(request: NextRequest) {
       qrCode: qrCodeDataURL,
       sessionURL,
       model: ocrResult.model, // Informar qué modelo se usó
+      totalImage: ocrResult.totalImage,
+      totalCalculated: ocrResult.totalCalculated,
+      validationAttempts: ocrResult.validationAttempts,
+      totalsMatch: ocrResult.totalsMatch,
     });
   } catch (error: any) {
     console.error('Error en /api/upload:', error);

@@ -17,6 +17,10 @@ export interface OCRResult {
   success: boolean;
   error?: string;
   model?: string;
+  totalImage?: number;
+  totalCalculated?: number;
+  validationAttempts?: number;
+  totalsMatch?: boolean;
 }
 
 /**
@@ -39,18 +43,41 @@ export async function processReceiptImage(
           role: 'system',
           content: `Eres un asistente experto en extraer información de recibos de restaurantes. 
           Analiza la imagen del recibo y extrae todos los items con sus precios.
+          
+          PROCESO DE EXTRACCIÓN Y VALIDACIÓN:
+          1. Extrae todos los items individuales con sus precios unitarios y cantidades
+          2. Identifica el TOTAL de la cuenta mostrado en la imagen del recibo
+          3. Calcula la suma de todos los items extraídos (price × quantity para cada item)
+          4. Compara el total calculado con el total mostrado en la imagen
+          5. Si NO coinciden (con margen de error de ±0.50):
+             - Revisa CADA partida una por una para verificar si hay errores en precios o cantidades
+             - Busca items que puedas haber omitido en la imagen
+             - Verifica que los precios sean unitarios y no totales
+             - Repite este proceso de validación hasta 5 veces si es necesario
+          6. Si después de 5 intentos no logras que cuadre, reporta la discrepancia
+          
           Responde SOLO con un JSON válido en el siguiente formato:
           {
             "items": [
               {"name": "nombre del item", "price": 25.50, "quantity": 2},
               {"name": "otro item", "price": 15.00, "quantity": 1}
-            ]
+            ],
+            "total_image": 56.00,
+            "total_calculated": 56.00,
+            "validation_attempts": 1,
+            "totals_match": true
           }
+          
+          REGLAS:
           - "price" es el precio UNITARIO de cada item
           - "quantity" es la cantidad de ese item (si no se especifica, usa 1)
-          Si no puedes identificar claramente un precio, usa 0.00.
-          Si no puedes identificar la cantidad, usa 1.
-          Ignora impuestos, propinas y totales generales. Solo extrae los items individuales.`,
+          - "total_image" es el total que aparece en la imagen del recibo
+          - "total_calculated" es la suma de (price × quantity) de todos los items
+          - "validation_attempts" es el número de intentos que hiciste para validar
+          - "totals_match" es true si los totales coinciden (±0.50), false si no
+          - Si no puedes identificar claramente un precio, usa 0.00
+          - Si no puedes identificar la cantidad, usa 1
+          - Ignora impuestos, propinas si están separados del total. Solo extrae los items individuales.`,
         },
         {
           role: 'user',
@@ -94,6 +121,10 @@ export async function processReceiptImage(
         items: items as BillItem[],
         success: true,
         model: modelName,
+        totalImage: parsed.total_image ? parseFloat(parsed.total_image) : undefined,
+        totalCalculated: parsed.total_calculated ? parseFloat(parsed.total_calculated) : undefined,
+        validationAttempts: parsed.validation_attempts ? parseInt(parsed.validation_attempts) : undefined,
+        totalsMatch: parsed.totals_match !== undefined ? Boolean(parsed.totals_match) : undefined,
       };
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
