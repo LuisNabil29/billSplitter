@@ -114,6 +114,7 @@ export default function Home() {
             Bill Splitter
           </h1>
           <p className="text-sm text-gray-500 mt-2">By Luis Nabil</p>
+          <p className="text-xs text-gray-400 mt-1">Última modificación: 24/12/25</p>
         </div>
         <p className="text-center text-gray-700 mb-8">
           Sube una imagen de tu cuenta y divide los gastos fácilmente
