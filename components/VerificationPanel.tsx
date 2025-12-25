@@ -55,7 +55,7 @@ export default function VerificationPanel({
           <p className="text-sm font-medium mb-1">Posible error detectado</p>
           <p className="text-xs mb-2">{issue.message}</p>
 
-          {hasSuggestedFix && (
+          {hasSuggestedFix && issue.suggestedFix && (
             <div className="mb-2 text-xs font-medium bg-white/60 p-2 rounded border border-current/20">
               Corrección sugerida:
               {issue.suggestedFix.price !== undefined && (
